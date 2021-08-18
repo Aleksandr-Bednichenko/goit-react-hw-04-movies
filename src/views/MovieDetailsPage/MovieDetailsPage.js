@@ -1,34 +1,64 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import * as API from "../../service/Api";
+import { useState, useEffect, useRef, Suspense, lazy } from "react";
+import {
+  useParams,
+  Route,
+  useHistory,
+  useRouteMatch,
+  Switch,
+  useLocation,
+} from "react-router-dom";
+import { fetchDetailsMovie } from "../../service/Api";
+const CardMovie = lazy(() => import("../../components/CardMovie"));
+const SubNavigation = lazy(() => import("../../components/SubNavigation"));
+const Cast = lazy(() => import("../Cast/Cast"));
+const Reviews = lazy(() => import("../Reviews/Reviews"));
 
 const MovieDetailsPage = () => {
-  const [movies, setMovies] = useState(null);
+  const [movie, setMovie] = useState(null);
   const { movieId } = useParams();
-  console.log(movieId);
-  console.log(movies);
+  const { path } = useRouteMatch();
+  const location = useLocation();
+  const { current } = useRef(location.state);
+  const history = useHistory();
 
   useEffect(() => {
-    API.fetchDetailsMove(movieId).then(setMovies);
-  }, [movieId]);
+    fetchDetailsMovie(movieId)
+      .then((data) => {
+        setMovie(data);
+      })
+      .catch((error) => {
+        history.push("/");
+        console.warn(error);
+      });
+  }, [movieId, history]);
 
   return (
-    <>
-      <h2>Details</h2>
-      {/* {movies && (
-             <img
-             src={src}
-             alt=""
-             className={styles.ImageGalleryItemImage}
-             data-img={largeImg}
-             height="240"
-             width="320"
-           />
-          
-            )
-           
-        } */}
-    </>
+    <div>
+      <button onClick={() => history.push(current ? current.from : "/")}>
+        &#8592; Go back
+      </button>
+      {movie && (
+        <>
+          <Suspense fallback={<h2>Loading...</h2>}>
+            <CardMovie movie={movie} />
+            <hr />
+            <p>Additional information</p>
+            <SubNavigation movieId={movieId} />
+          </Suspense>
+          <hr />
+          <Suspense fallback={<h2>Loading...</h2>}>
+            <Switch>
+              <Route path={`${path}/cast`}>
+                <Cast />
+              </Route>
+              <Route path={`${path}/reviews`}>
+                <Reviews />
+              </Route>
+            </Switch>
+          </Suspense>
+        </>
+      )}
+    </div>
   );
 };
 
